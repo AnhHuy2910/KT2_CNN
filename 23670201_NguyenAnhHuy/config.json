@@ -1,0 +1,149 @@
+{
+    "mssv": "23670201",
+    "mssv_last4": {
+        "a": 0,
+        "b": 2,
+        "c": 0,
+        "d": 1
+    },
+    "seed": 42,
+    "data": {
+        "dataset": "CIFAR-100",
+        "num_classes": 100,
+        "num_official_train": 50000,
+        "num_official_test": 10000,
+        "split": {
+            "train": 45000,
+            "val": 5000,
+            "test": 10000,
+            "method": "stratified split from official train set, random_state=42"
+        },
+        "normalization": {
+            "mean": [
+                0.5071,
+                0.4865,
+                0.4409
+            ],
+            "std": [
+                0.2673,
+                0.2564,
+                0.2762
+            ],
+            "note": "Standard CIFAR-100 per-channel mean/std (computed over official training set)."
+        }
+    },
+    "student_cnn": {
+        "num_conv_blocks_N": 3,
+        "formula_N": "N = 3 + (a mod 3) = 3 + (0 mod 3) = 3",
+        "base_channels_C1": 64,
+        "formula_C1": "C1 = 16 * 2^(b mod 3) = 16 * 2^(2 mod 3) = 16 * 4 = 64",
+        "channels_per_block": [
+            64,
+            128,
+            256
+        ],
+        "formula_channels": "C_i = min(C1 * 2^(i-1), 256)",
+        "kernel_size": 3,
+        "formula_kernel": "c mod 2 = 0 mod 2 = 0 -> 3x3",
+        "activation": "LeakyReLU",
+        "formula_activation": "d mod 3 = 1 mod 3 = 1 -> LeakyReLU",
+        "normalization": "BatchNorm2d",
+        "formula_normalization": "(a+b) mod 2 = (0+2) mod 2 = 0 -> BatchNorm2d",
+        "pooling": "MaxPool2d(2)",
+        "formula_pooling": "(b+c) mod 2 = (2+0) mod 2 = 0 -> MaxPool2d(2)",
+        "dropout_r": 0.3,
+        "formula_dropout": "(c+d) mod 3 = (0+1) mod 3 = 1 -> 0.3",
+        "classifier": "AdaptiveAvgPool2d(1) -> Flatten -> Dropout(0.3) -> Linear(256, 100)",
+        "input_size": [
+            32,
+            32
+        ],
+        "training": {
+            "epochs": 100,
+            "batch_size": 128,
+            "optimizer": "AdamW",
+            "learning_rate": 0.001,
+            "weight_decay": 0.0005,
+            "scheduler": "CosineAnnealingLR",
+            "loss": "CrossEntropyLoss"
+        },
+        "augmentation": {
+            "train": [
+                "RandomCrop(32, padding=4)",
+                "RandomHorizontalFlip()"
+            ],
+            "val_test": "none"
+        }
+    },
+    "resnet18": {
+        "pretrained": "ImageNet",
+        "input_size": [
+            224,
+            224
+        ],
+        "normalization": {
+            "mean": [
+                0.485,
+                0.456,
+                0.406
+            ],
+            "std": [
+                0.229,
+                0.224,
+                0.225
+            ],
+            "note": "Standard ImageNet mean/std, required for pretrained weights."
+        },
+        "classifier": {
+            "D": 512,
+            "H": 128,
+            "formula_H": "H = 128 * 2^(b mod 2) = 128 * 2^(2 mod 2) = 128 * 1 = 128",
+            "activation": "LeakyReLU",
+            "dropout_r": 0.3,
+            "structure": "Linear(512, 128) -> LeakyReLU -> Dropout(0.3) -> Linear(128, 100)"
+        },
+        "fine_tuning": {
+            "F": 0,
+            "formula_F": "F = (a+c) mod 3 = (0+0) mod 3 = 0",
+            "stage2_trainable": [
+                "layer4",
+                "classifier"
+            ],
+            "stage2_frozen": [
+                "conv1",
+                "bn1",
+                "layer1",
+                "layer2",
+                "layer3"
+            ]
+        },
+        "training": {
+            "stage1_epochs": 20,
+            "stage1_trainable": [
+                "classifier"
+            ],
+            "stage1_lr": 0.001,
+            "stage2_epochs": 80,
+            "stage2_trainable": [
+                "layer4",
+                "classifier"
+            ],
+            "stage2_lr_backbone": 0.00005,
+            "stage2_lr_classifier": 0.0005,
+            "optimizer": "AdamW",
+            "weight_decay": 0.0005,
+            "scheduler": "CosineAnnealingLR (per stage)",
+            "loss": "CrossEntropyLoss",
+            "total_min_epochs": 100
+        },
+        "augmentation": {
+            "train": [
+                "Resize(256,256)",
+                "RandomCrop(224)",
+                "RandomHorizontalFlip()"
+            ],
+            "val_test": "Resize(224,224) only, no random augmentation"
+        }
+    },
+    "device": "cuda if available else cpu"
+}
